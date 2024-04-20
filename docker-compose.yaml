@@ -1,0 +1,72 @@
+name: infrastructure
+services:
+  nginx:
+    image: "nginx:1.25.4"
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - external_net
+      - internal_net
+    volumes:
+      - ./nginx/conf:/etc/nginx/conf.d        #конф. файл nginx
+      - ./nginx/html:/usr/share/nginx/html    #веб-странички
+      - ./nginx/https:/etc/nginx/https             #сертификаты и прочее для https
+    restart: on-failure
+    depends_on:
+      certs_openssl:
+        condition: service_completed_successfully
+      dhparam_gen:
+        condition: service_completed_successfully
+      flask:
+        condition: service_started
+      
+
+  flask:
+    build: ./python/
+    networks:
+      internal_net:
+        aliases:
+          - flask
+    volumes:
+      - ./app:/app
+    deploy: 
+      replicas: 2
+    restart: on-failure
+    command: python app.py
+
+
+  certs_openssl:
+    build: ./certificate/
+    container_name: certs_openssl
+    networks:
+      - external_net
+    volumes:
+      - ./nginx/https/ssl:/pki/web
+      - ./pki:/pki:Z
+    env_file:
+      - .env
+    command: >
+      -c './certs_gen.sh'
+
+  dhparam_gen:
+    build: ./certificate/
+    container_name: dhparam_gen
+    networks:
+      - external_net
+    volumes:
+      - ./nginx/https:/etc/nginx/https
+      - ./pki:/pki:Z
+    env_file:
+      - .env
+    command: -c './dhparam_gen.sh'
+
+
+
+networks:
+  external_net:
+    driver: bridge
+  internal_net:
+    name: internal_net
+    driver: bridge

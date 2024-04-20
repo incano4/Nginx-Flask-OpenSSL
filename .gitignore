@@ -1,0 +1,11 @@
+webserver.crt
+webserver.key
+ca.key
+ca.crt
+pki/db
+pki/certs
+nginx/https/ssl/dhparam.pem
+pki/ca.csr
+pki/serial
+pki/serial.old
+pki/webserver.csr
